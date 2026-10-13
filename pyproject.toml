@@ -1,0 +1,10 @@
+[project]
+name = "cachesade"
+version = "1.0.0"
+description = "Dar ve doğrulanmış kurallarla güvenli Windows cache temizleyici"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
