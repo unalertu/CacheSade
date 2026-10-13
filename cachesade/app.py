@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import threading
-import time
 import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path

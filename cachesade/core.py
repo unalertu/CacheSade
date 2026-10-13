@@ -111,10 +111,14 @@ def resolve_rule_paths(rule: CacheRule, env: Mapping[str, str] | None = None) ->
         if rule.glob_last_part:
             parent = candidate.parent
             if parent.is_dir():
-                resolved.extend(p for p in parent.glob(candidate.name) if p.is_dir())
-        elif candidate.is_dir():
+                resolved.extend(
+                    p for p in parent.glob(candidate.name)
+                    if p.is_dir() and not _is_reparse(p)
+                )
+        elif candidate.is_dir() and not _is_reparse(candidate):
             resolved.append(candidate)
-    return tuple(dict.fromkeys(p.resolve(strict=False) for p in resolved))
+    # abspath normalizes the path without following a junction/symlink.
+    return tuple(dict.fromkeys(Path(os.path.abspath(p)) for p in resolved))
 
 
 def _is_reparse(path: Path) -> bool:
@@ -177,7 +181,10 @@ def clean_result(result: ScanResult, now: float | None = None) -> CleanResult:
     timestamp = time.time() if now is None else now
 
     for root in result.paths:
-        root = root.resolve(strict=False)
+        root = Path(os.path.abspath(root))
+        if _is_reparse(root):
+            skipped.append(f"{root}: yeniden ayrıştırma noktası güvenlik nedeniyle atlandı")
+            continue
         files = list(_candidate_files(root, result.rule.older_than_days, timestamp))
         for path in files:
             try:

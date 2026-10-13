@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from cachesade.core import RULES, CacheRule, clean_result, resolve_rule_paths, scan_rule
+from cachesade.core import RULES, CacheRule, ScanResult, clean_result, resolve_rule_paths, scan_rule
 
 
 class CoreTests(unittest.TestCase):
@@ -81,6 +81,25 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(outcome.deleted_files, 0)
             self.assertEqual(len(outcome.skipped), 1)
             self.assertTrue(locked.exists())
+
+    def test_reparse_cache_root_is_rejected_during_scan_and_clean(self):
+        with tempfile.TemporaryDirectory() as base:
+            root = Path(base)
+            cache = root / "Local" / "NVIDIA" / "DXCache"
+            cache.mkdir(parents=True)
+            protected = cache / "protected.bin"
+            protected.write_bytes(b"keep")
+            env = self._env(root)
+            rule = CacheRule("test", "Test", "Test", ("{LOCALAPPDATA}/NVIDIA/DXCache",), "")
+
+            with patch("cachesade.core._is_reparse", return_value=True):
+                self.assertEqual(resolve_rule_paths(rule, env), ())
+                forged = ScanResult(rule, (cache,), protected.stat().st_size, 1)
+                outcome = clean_result(forged)
+
+            self.assertEqual(outcome.deleted_files, 0)
+            self.assertEqual(len(outcome.skipped), 1)
+            self.assertTrue(protected.exists())
 
     @staticmethod
     def _env(root: Path) -> dict[str, str]:
